@@ -224,9 +224,15 @@ function check(){
   line(html.indexOf('要確認')>=0,'【要確認】の受け皿があるか');
   // 7 スマホ指定
   line(/name=["']viewport["']/i.test(html),'viewport（スマホ幅）の指定があるか');
-  // 8 問い合わせの受け先
+  // 8 問い合わせの受け先（URL・LINE・電話などの手がかりが画面にあるか）
   var to=v('f_to');
-  line(to?html.indexOf(to.slice(0,6))>=0:false,'問い合わせの受け先が入っているか');
+  var keys=(to.match(/[\/a-zA-Z0-9._-]{4,}/g)||[]).filter(function(k){return k.length>=4;});
+  var hasTo=false;
+  if(to){
+    if(keys.length){ hasTo=keys.some(function(k){return html.indexOf(k)>=0;}); }
+    if(!hasTo){ hasTo=/問い合わせ|お問合せ|予約|LINE|電話|連絡/.test(html); }
+  }
+  line(hasTo,'問い合わせの受け先が入っているか'+(to&&keys.length?'（探した手がかり: '+keys.join(' / ')+'）':''));
   var head=ng===0?'<p class="chk ok">検算 8項目すべて通りました。次は目で見る番です。</p>'
                  :'<p class="chk ng">'+ng+'項目が引っかかりました。直すか、AIに直させてください。</p>';
   document.getElementById('report').innerHTML=head+r.join('');
