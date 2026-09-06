@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外壁塗装 概算見積もりシミュレーター</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    font-family: sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #222;
+    background: #fff;
+  }
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  h1 {
+    font-size: 20px;
+    border-bottom: 3px solid #333;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+  h2 {
+    font-size: 17px;
+    margin-top: 24px;
+    margin-bottom: 8px;
+    border-left: 6px solid #333;
+    padding-left: 8px;
+  }
+  fieldset {
+    border: 1px solid #999;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+  }
+  legend {
+    font-size: 16px;
+    font-weight: bold;
+    padding: 0 6px;
+  }
+  label {
+    display: block;
+    margin: 8px 0;
+    font-size: 16px;
+  }
+  input[type="number"] {
+    width: 100%;
+    max-width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #999;
+    border-radius: 4px;
+  }
+  select {
+    width: 100%;
+    max-width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #999;
+    border-radius: 4px;
+  }
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  .checkline {
+    display: flex;
+    align-items: center;
+  }
+  button {
+    width: 100%;
+    font-size: 17px;
+    padding: 12px;
+    border: 2px solid #333;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    margin-top: 8px;
+    cursor: pointer;
+  }
+  button.secondary {
+    background: #fff;
+    color: #333;
+  }
+  .box {
+    border: 2px solid #333;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 16px;
+    width: 100%;
+    word-break: break-word;
+  }
+  .price {
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px 0;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+    margin: 8px 0;
+  }
+  .confirm {
+    border: 2px dashed #333;
+    border-radius: 4px;
+    padding: 8px;
+    margin-top: 8px;
+    font-size: 16px;
+  }
+  .confirm-title {
+    font-weight: bold;
+  }
+  .note {
+    font-size: 14px;
+    color: #444;
+    margin-top: 12px;
+    border-top: 1px solid #ccc;
+    padding-top: 8px;
+  }
+  .small {
+    font-size: 14px;
+    color: #444;
+  }
+  .breakdown {
+    font-size: 15px;
+  }
+  .breakdown li {
+    margin: 4px 0;
+  }
+  .copied-msg {
+    font-size: 15px;
+    color: #333;
+    margin-top: 8px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<script>
+// ここに料金ルールシートの数字をそのまま入れる（記載のない金額は追加しない）
+const PRICES = {
+  base: {
+    under30: 780000,        // 30坪未満
+    from30to40: 950000,     // 30坪以上40坪未満
+    from40to50: 1180000,    // 40坪以上50坪未満
+    over50: 1420000         // 50坪以上
+  },
+  options: {
+    roof: 280000,      // 屋根も一緒に塗る
+    appendage: 90000,  // 付帯部（雨どい・破風）も塗る
+    veranda: 120000    // ベランダ防水
+  },
+  surcharge: {
+    threeFloorRate: 0.20,   // 3階建て：基本料金の+20%
+    narrowScaffoldFlat: 60000, // 足場が隣家と接して狭い：+60,000円
+    old15yearsRate: 0.08    // 前回の塗装から15年以上：+8%
+  },
+  rangeRate: 0.15,       // 幅は算出額の±15%
+  roundUnit: 1000,       // 1,000円未満切り上げ
+  note: "現地調査の前の概算です。正式なお見積もりは無料の現地調査後にお出しします。",
+  contact: "サイト内の問い合わせフォーム（/contact）"
+};
+</script>
+
+<h1>外壁塗装 概算見積もりシミュレーター</h1>
+<p class="small">条件を選ぶと、概算金額（税込）を計算します。</p>
+
+<form id="calcForm" onsubmit="return false;">
+
+  <fieldset>
+    <legend>延床面積</legend>
+    <label>延床面積（坪）
+      <input type="number" id="tsubo" min="1" step="1" placeholder="例：35" oninput="calculate()">
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>建物の階数</legend>
+    <label>
+      <select id="floors" onchange="calculate()">
+        <option value="normal">2階建て以下</option>
+        <option value="three">3階建て（基本料金+20%）</option>
+        <option value="fourplus">4階建て以上</option>
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>足場の条件</legend>
+    <label>
+      <select id="scaffold" onchange="calculate()">
+        <option value="normal">通常の足場</option>
+        <option value="narrow">隣家と接して狭い（+60,000円）</option>
+        <option value="special">その他、特殊な足場・搬入経路が必要</option>
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>前回の塗装からの経過年数</legend>
+    <label>
+      <select id="years" onchange="calculate()">
+        <option value="under15">15年未満</option>
+        <option value="over15">15年以上（+8%）</option>
+        <option value="never">一度も塗装したことがない</option>
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>追加オプション</legend>
+    <label class="checkline"><input type="checkbox" id="opt_roof" onchange="calculate()"> 屋根も一緒に塗る（+280,000円）</label>
+    <label class="checkline"><input type="checkbox" id="opt_appendage" onchange="calculate()"> 付帯部（雨どい・破風）も塗る（+90,000円）</label>
+    <label class="checkline"><input type="checkbox" id="opt_veranda" onchange="calculate()"> ベランダ防水（+120,000円）</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>その他のご希望</legend>
+    <label class="checkline"><input type="checkbox" id="opt_specialpaint" onchange="calculate()"> 特殊塗料（遮熱・断熱・低汚染など）を希望する</label>
+    <label class="checkline"><input type="checkbox" id="opt_color" onchange="calculate()"> 色・艶に特殊なこだわりがある</label>
+  </fieldset>
+
+</form>
+
+<div class="box" id="resultBox" style="display:none;">
+  <h2 style="margin-top:0;">概算結果</h2>
+  <div class="breakdown" id="breakdown"></div>
+  <div class="price" id="priceRange"></div>
+  <div id="confirmArea"></div>
+  <div class="note" id="noteArea"></div>
+</div>
+
+<button id="contactBtn" onclick="copyAndShow()" style="display:none;">この内容をコピーして問い合わせる</button>
+<p class="small" id="contactDest" style="display:none;"></p>
+<p class="copied-msg" id="copiedMsg">内容をコピーしました。上記の問い合わせ先に貼り付けてお問い合わせください。</p>
+
+<script>
+function ceilRound(value, unit) {
+  return Math.ceil(value / unit) * unit;
+}
+
+function formatManYen(yen) {
+  return (yen / 10000).toFixed(1) + "万円";
+}
+
+function calculate() {
+  const tsubo = parseFloat(document.getElementById('tsubo').value);
+  const resultBox = document.getElementById('resultBox');
+  const contactBtn = document.getElementById('contactBtn');
+  const contactDest = document.getElementById('contactDest');
+  document.getElementById('copiedMsg').style.display = 'none';
+
+  if (!tsubo || tsubo <= 0) {
+    resultBox.style.display = 'none';
+    contactBtn.style.display = 'none';
+    contactDest.style.display = 'none';
+    return;
+  }
+
+  let base;
+  let baseLabel;
+  if (tsubo < 30) { base = PRICES.base.under30; baseLabel = "30坪未満"; }
+  else if (tsubo < 40) { base = PRICES.base.from30to40; baseLabel = "30坪以上40坪未満"; }
+  else if (tsubo < 50) { base = PRICES.base.from40to50; baseLabel = "40坪以上50坪未満"; }
+  else { base = PRICES.base.over50; baseLabel = "50坪以上"; }
+
+  const floors = document.getElementById('floors').value;
+  const scaffold = document.getElementById('scaffold').value;
+  const years = document.getElementById('years').value;
+  const optRoof = document.getElementById('opt_roof').checked;
+  const optAppendage = document.getElementById('opt_appendage').checked;
+  const optVeranda = document.getElementById('opt_veranda').checked;
+  const optSpecialPaint = document.getElementById('opt_specialpaint').checked;
+  const optColor = document.getElementById('opt_color').checked;
+
+  let rateMultiplier = 1;
+  const breakdownLines = [];
+  const confirmItems = [];
+
+  breakdownLines.push("延床面積区分：" + baseLabel + "（基本料金 " + base.toLocaleString() + "円）");
+
+  if (floors === 'three') {
+    rateMultiplier += PRICES.surcharge.threeFloorRate;
+    breakdownLines.push("3階建て：基本料金+20%");
+  } else if (floors === 'fourplus') {
+    confirmItems.push("4階建て以上の割増");
+  }
+
+  if (years === 'over15') {
+    rateMultiplier += PRICES.surcharge.old15yearsRate;
+    breakdownLines.push("前回の塗装から15年以上：基本料金+8%");
+  } else if (years === 'never') {
+    confirmItems.push("一度も塗装したことがない場合の下地補修");
+  }
+
+  let flatSurcharge = 0;
+  if (scaffold === 'narrow') {
+    flatSurcharge += PRICES.surcharge.narrowScaffoldFlat;
+    breakdownLines.push("足場が隣家と接して狭い：+" + PRICES.surcharge.narrowScaffoldFlat.toLocaleString() + "円");
+  } else if (scaffold === 'special') {
+    confirmItems.push("特殊な足場・搬入経路が必要な場合の追加費用");
+  }
+
+  let optionsSum = 0;
+  if (optRoof) { optionsSum += PRICES.options.roof; breakdownLines.push("屋根も一緒に塗る：+" + PRICES.options.roof.toLocaleString() + "円"); }
+  if (optAppendage) { optionsSum += PRICES.options.appendage; breakdownLines.push("付帯部塗装：+" + PRICES.options.appendage.toLocaleString() + "円"); }
+  if (optVeranda) { optionsSum += PRICES.options.veranda; breakdownLines.push("ベランダ防水：+" + PRICES.options.veranda.toLocaleString() + "円"); }
+
+  if (optSpecialPaint) { confirmItems.push("特殊塗料（遮熱・断熱・低汚染など）の指定"); }
+  if (optColor) { confirmItems.push("色・艶に関する特殊な指定"); }
+
+  const adjustedBase = base * rateMultiplier;
+  let total = adjustedBase + optionsSum + flatSurcharge;
+  total = ceilRound(total, PRICES.roundUnit);
+
+  const low = ceilRound(total * (1 - PRICES.rangeRate), PRICES.roundUnit);
+  const high = ceilRound(total * (1 + PRICES.rangeRate), PRICES.roundUnit);
+
+  document.getElementById('breakdown').innerHTML =
+    "<ul>" + breakdownLines.map(l => "<li>" + l + "</li>").join("") + "</ul>";
+
+  document.getElementById('priceRange').textContent =
+    formatManYen(low) + " 〜 " + formatManYen(high) + "（税込）";
+
+  const confirmArea = document.getElementById('confirmArea');
+  if (confirmItems.length > 0) {
+    confirmArea.innerHTML =
+      "<div class='confirm'><div class='confirm-title'>【要確認】</div>" +
+      "<ul>" + confirmItems.map(c => "<li>" + c + "：この条件はお店に確認が必要です</li>").join("") +
+      "</ul></div>";
+  } else {
+    confirmArea.innerHTML = "";
+  }
+
+  document.getElementById('noteArea').textContent = "※ " + PRICES.note;
+
+  resultBox.style.display = 'block';
+  contactBtn.style.display = 'block';
+  contactDest.style.display = 'block';
+  contactDest.textContent = "送信先：" + PRICES.contact;
+
+  window.__estimate = {
+    baseLabel, breakdownLines, low, high, confirmItems
+  };
+}
+
+function buildSummaryText() {
+  const e = window.__estimate;
+  if (!e) return "";
+  let text = "【外壁塗装 概算見積もり】\n";
+  text += "延床面積区分：" + e.baseLabel + "\n";
+  text += "選択条件：\n";
+  e.breakdownLines.forEach(l => { text += "・" + l + "\n"; });
+  text += "\n概算金額：" + formatManYen(e.low) + " 〜 " + formatManYen(e.high) + "（税込）\n";
+  text += "※ " + PRICES.note + "\n";
+  if (e.confirmItems.length > 0) {
+    text += "\n【要確認】\n";
+    e.confirmItems.forEach(c => { text += "・" + c + "：この条件はお店に確認が必要です\n"; });
+  }
+  text += "\n送信先：" + PRICES.contact;
+  return text;
+}
+
+function copyAndShow() {
+  const text = buildSummaryText();
+  if (!text) return;
+
+  function showCopied() {
+    document.getElementById('copiedMsg').style.display = 'block';
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(showCopied).catch(() => fallbackCopy(text, showCopied));
+  } else {
+    fallbackCopy(text, showCopied);
+  }
+}
+
+function fallbackCopy(text, cb) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  cb();
+}
+</script>
+
+</div>
+</body>
+</html>
