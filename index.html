@@ -206,12 +206,15 @@ function check(){
   var plain=html.replace(/,/g,'');
   var miss=sheet.filter(function(n){return plain.indexOf(n.replace('+','').replace('-',''))<0;});
   line(sheet.length>0&&miss.length===0,'シートの金額 '+sheet.length+'件のうち、HTMLに見つからない金額: '+miss.length+'件'+(miss.length?'（'+miss.join(' / ')+'）':''));
-  // 3 シートに無い金額らしき数字
-  var found=(plain.match(/\b\d{4,7}\b/g)||[]);
+  // 3 シートに無い金額らしき数字（色コード・書式の数字は除く）
+  var body=html.replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<!--[\s\S]*?-->/g,'')
+               .replace(/#[0-9a-f]{3,8}\b/gi,'').replace(/(\d),(?=\d)/g,'$1');
+  var found=(body.match(/\d+(?:\.\d+)?/g)||[]).filter(function(n){return n.indexOf('.')<0 && n.length>=4 && n.length<=7;});
   var known={}; sheet.forEach(function(n){known[n.replace(/[+\-]/,'')]=1;});
-  var extra=found.filter(function(n){return !known[n] && n.length>=4 && !/^20\d\d$/.test(n);});
+  ['1000','10000','100000','1000000'].forEach(function(n){known[n]=1;});  // 端数・万円換算に使う数
+  var extra=found.filter(function(n){return !known[n] && !/^20\d\d$/.test(n);});
   var uniq=[]; extra.forEach(function(n){if(uniq.indexOf(n)<0)uniq.push(n);});
-  line(uniq.length===0,'シートに無い4桁以上の数字: '+uniq.length+'種'+(uniq.length?'（'+uniq.slice(0,8).join(' / ')+'）— 相場を足していないか目で見る':''));
+  line(uniq.length===0,'シートに無い4桁以上の数字: '+uniq.length+'種'+(uniq.length?'（'+uniq.slice(0,8).join(' / ')+'）— 相場や例の金額を足していないか目で見る':''));
   // 4 注意書き
   var note=v('f_note');
   line(note?html.indexOf(note.slice(0,12))>=0:false,'注意書きが画面の文言に入っているか');
