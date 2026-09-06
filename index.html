@@ -212,7 +212,7 @@ function check(){
   var found=(body.match(/\d+(?:\.\d+)?/g)||[]).filter(function(n){return n.indexOf('.')<0 && n.length>=4 && n.length<=7;});
   var known={}; sheet.forEach(function(n){known[n.replace(/[+\-]/,'')]=1;});
   ['1000','10000','100000','1000000'].forEach(function(n){known[n]=1;});  // 端数・万円換算に使う数
-  var extra=found.filter(function(n){return !known[n] && !/^20\d\d$/.test(n);});
+  var extra=found.filter(function(n){return !known[n] && !/^20\d\d$/.test(n) && !/^0+$/.test(n);});
   var uniq=[]; extra.forEach(function(n){if(uniq.indexOf(n)<0)uniq.push(n);});
   line(uniq.length===0,'シートに無い4桁以上の数字: '+uniq.length+'種'+(uniq.length?'（'+uniq.slice(0,8).join(' / ')+'）— 相場や例の金額を足していないか目で見る':''));
   // 4 注意書き
@@ -233,7 +233,12 @@ function check(){
     if(!hasTo){ hasTo=/問い合わせ|お問合せ|予約|LINE|電話|連絡/.test(html); }
   }
   line(hasTo,'問い合わせの受け先が入っているか'+(to&&keys.length?'（探した手がかり: '+keys.join(' / ')+'）':''));
-  var head=ng===0?'<p class="chk ok">検算 8項目すべて通りました。次は目で見る番です。</p>'
+  // 9 書きかけの目印が残っていないか
+  var todo=(html.match(/TODO|FIXME|XXX|ここに[^<"']{0,8}(入力|記入|変更)|000-0000|000-000-0000|\u3007\u3007\u3007/g)||[]);
+  var tu=[]; todo.forEach(function(t){if(tu.indexOf(t)<0)tu.push(t);});
+  line(tu.length===0,'書きかけの目印が残っていないか'+(tu.length?'（'+tu.slice(0,5).join(' / ')+'）':''));
+
+  var head=ng===0?'<p class="chk ok">検算 9項目すべて通りました。次は目で見る番です。</p>'
                  :'<p class="chk ng">'+ng+'項目が引っかかりました。直すか、AIに直させてください。</p>';
   document.getElementById('report').innerHTML=head+r.join('');
 }
