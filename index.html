@@ -208,7 +208,12 @@ function check(){
   line(sheet.length>0&&miss.length===0,'シートの金額 '+sheet.length+'件のうち、HTMLに見つからない金額: '+miss.length+'件'+(miss.length?'（'+miss.join(' / ')+'）':''));
   // 3 シートに無い金額らしき数字（色コード・書式の数字は除く）
   var body=html.replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<!--[\s\S]*?-->/g,'')
-               .replace(/#[0-9a-f]{3,8}\b/gi,'').replace(/(\d),(?=\d)/g,'$1');
+               .replace(/#[0-9a-f]{3,8}\b/gi,'')
+               .replace(/style\s*=\s*(["'])[\s\S]*?\1/gi,'')
+               .replace(/\.style\.[\w]+\s*=\s*(["'])[^"']*\1/g,'')
+               .replace(/-?\d+(?:\.\d+)?(px|ms|em|rem|vh|vw|deg)\b/gi,'')
+               .replace(/set(?:Timeout|Interval)\s*\([\s\S]*?,\s*\d+\s*\)/g,'')
+               .replace(/(\d),(?=\d)/g,'$1');
   var found=(body.match(/\d+(?:\.\d+)?/g)||[]).filter(function(n){return n.indexOf('.')<0 && n.length>=4 && n.length<=7;});
   var known={}; sheet.forEach(function(n){known[n.replace(/[+\-]/,'')]=1;});
   ['1000','10000','100000','1000000'].forEach(function(n){known[n]=1;});  // 端数・万円換算に使う数
